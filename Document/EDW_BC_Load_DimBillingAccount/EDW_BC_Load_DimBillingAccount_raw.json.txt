@@ -1,0 +1,980 @@
+{
+  "package_name": "EDW_BC_Load_DimBillingAccount",
+  "description": "SSIS Package to load DimBillingAccount dimension table from GuideWire BillingCenter source system. Implements SCD Type 1 logic with BeanVersion-based change detection.",
+  "variables": [
+    {
+      "name": "BatchID",
+      "data_type": "INT32",
+      "default_value": 0,
+      "description": "Batch identifier for audit tracking"
+    },
+    {
+      "name": "IncrementDays",
+      "data_type": "INT32",
+      "default_value": 0,
+      "description": "Number of days to look back for incremental load"
+    },
+    {
+      "name": "SourceCount",
+      "data_type": "INT32",
+      "default_value": 0,
+      "description": "Count of source records processed"
+    },
+    {
+      "name": "InsertCount",
+      "data_type": "INT32",
+      "default_value": 0,
+      "description": "Count of records inserted"
+    },
+    {
+      "name": "UpdateCount",
+      "data_type": "INT32",
+      "default_value": 0,
+      "description": "Count of records updated"
+    },
+    {
+      "name": "UnChangeCount",
+      "data_type": "INT32",
+      "default_value": 0,
+      "description": "Count of records unchanged"
+    }
+  ],
+  "sources": [
+    {
+      "table_name": "BC_ACCOUNT",
+      "alias": "dt",
+      "description": "Main billing account table from GuideWire BillingCenter",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false,
+          "description": "Primary key of account"
+        },
+        {
+          "column_name": "ACCOUNTNUMBER",
+          "data_type": "VARCHAR(255)",
+          "nullable": true
+        },
+        {
+          "column_name": "ACCOUNTNAME",
+          "data_type": "VARCHAR(255)",
+          "nullable": true
+        },
+        {
+          "column_name": "ACCOUNTTYPE",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Foreign key to bctl_accounttype"
+        },
+        {
+          "column_name": "BILLINGLEVEL",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Foreign key to bctl_billinglevel"
+        },
+        {
+          "column_name": "SERVICETIER",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Foreign key to bctl_customerservicetier"
+        },
+        {
+          "column_name": "SECURITYZONEID",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Foreign key to bc_securityzone"
+        },
+        {
+          "column_name": "CLOSEDATE",
+          "data_type": "TIMESTAMP",
+          "nullable": true
+        },
+        {
+          "column_name": "CREATETIME",
+          "data_type": "TIMESTAMP",
+          "nullable": true
+        },
+        {
+          "column_name": "DELINQUENCYSTATUS",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Foreign key to bctl_delinquencystatus"
+        },
+        {
+          "column_name": "FIRSTTWICEPERMTHINVOICEDOM",
+          "data_type": "INT",
+          "nullable": true
+        },
+        {
+          "column_name": "SECONDTWICEPERMTHINVOICEDOM",
+          "data_type": "INT",
+          "nullable": true
+        },
+        {
+          "column_name": "PUBLICID",
+          "data_type": "VARCHAR(20)",
+          "nullable": false,
+          "description": "Business key for account"
+        },
+        {
+          "column_name": "BEANVERSION",
+          "data_type": "VARCHAR(20)",
+          "nullable": true,
+          "description": "Version control field for change detection"
+        },
+        {
+          "column_name": "RETIRED",
+          "data_type": "INT",
+          "nullable": true,
+          "description": "Soft delete indicator (0=Active, 1=Retired)"
+        },
+        {
+          "column_name": "SEGMENT",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Foreign key to bctl_accountsegment"
+        },
+        {
+          "column_name": "UPDATETIME",
+          "data_type": "TIMESTAMP",
+          "nullable": true,
+          "description": "Last update timestamp for incremental load"
+        }
+      ]
+    },
+    {
+      "table_name": "BC_PARENTACCT",
+      "alias": "pa",
+      "description": "Parent account relationship table",
+      "columns": [
+        {
+          "column_name": "OWNERID",
+          "data_type": "BIGINT",
+          "nullable": false,
+          "description": "Child account ID"
+        },
+        {
+          "column_name": "FOREIGNENTITYID",
+          "data_type": "BIGINT",
+          "nullable": false,
+          "description": "Parent account ID"
+        },
+        {
+          "column_name": "BEANVERSION",
+          "data_type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "column_name": "UPDATETIME",
+          "data_type": "TIMESTAMP",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BC_ACCOUNTCONTACT",
+      "alias": "ac",
+      "description": "Account contact association table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "INSUREDACCOUNTID",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Account ID for insured"
+        },
+        {
+          "column_name": "CONTACTID",
+          "data_type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "column_name": "BEANVERSION",
+          "data_type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "column_name": "UPDATETIME",
+          "data_type": "TIMESTAMP",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BC_ACCOUNTCONTACTROLE",
+      "alias": "acr",
+      "description": "Account contact role assignment",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "ACCOUNTCONTACTID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "ROLE",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Foreign key to bctl_accountrole"
+        },
+        {
+          "column_name": "BEANVERSION",
+          "data_type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "column_name": "UPDATETIME",
+          "data_type": "TIMESTAMP",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BCTL_ACCOUNTROLE",
+      "alias": "tlar",
+      "description": "Account role type lookup table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "TYPECODE",
+          "data_type": "VARCHAR(50)",
+          "nullable": true,
+          "description": "Role type code (e.g., 'insured')"
+        }
+      ]
+    },
+    {
+      "table_name": "BC_CONTACT",
+      "alias": "c",
+      "description": "Contact information table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "FIRSTNAME",
+          "data_type": "VARCHAR(45)",
+          "nullable": true
+        },
+        {
+          "column_name": "LASTNAME",
+          "data_type": "VARCHAR(45)",
+          "nullable": true
+        },
+        {
+          "column_name": "PRIMARYADDRESSID",
+          "data_type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "column_name": "BEANVERSION",
+          "data_type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "column_name": "UPDATETIME",
+          "data_type": "TIMESTAMP",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BC_ADDRESS",
+      "alias": "a",
+      "description": "Address information table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "ADDRESSLINE1",
+          "data_type": "VARCHAR(60)",
+          "nullable": true
+        },
+        {
+          "column_name": "ADDRESSLINE2",
+          "data_type": "VARCHAR(60)",
+          "nullable": true
+        },
+        {
+          "column_name": "ADDRESSLINE3",
+          "data_type": "VARCHAR(60)",
+          "nullable": true
+        },
+        {
+          "column_name": "CITY",
+          "data_type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "column_name": "POSTALCODE",
+          "data_type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "column_name": "STATE",
+          "data_type": "BIGINT",
+          "nullable": true,
+          "description": "Foreign key to bctl_state"
+        },
+        {
+          "column_name": "BEANVERSION",
+          "data_type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "column_name": "UPDATETIME",
+          "data_type": "TIMESTAMP",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BCTL_STATE",
+      "alias": "tls",
+      "description": "State lookup table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "NAME",
+          "data_type": "VARCHAR(50)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BCTL_ACCOUNTTYPE",
+      "alias": "at",
+      "description": "Account type lookup table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "NAME",
+          "data_type": "VARCHAR(50)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BCTL_BILLINGLEVEL",
+      "alias": "bl",
+      "description": "Billing level lookup table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "NAME",
+          "data_type": "VARCHAR(100)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BCTL_ACCOUNTSEGMENT",
+      "alias": "bas",
+      "description": "Account segment lookup table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "NAME",
+          "data_type": "VARCHAR(50)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BCTL_CUSTOMERSERVICETIER",
+      "alias": "cst",
+      "description": "Customer service tier lookup table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "NAME",
+          "data_type": "VARCHAR(50)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BC_SECURITYZONE",
+      "alias": "sz",
+      "description": "Security zone table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "NAME",
+          "data_type": "VARCHAR(60)",
+          "nullable": true
+        },
+        {
+          "column_name": "BEANVERSION",
+          "data_type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "column_name": "UPDATETIME",
+          "data_type": "TIMESTAMP",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "BCTL_DELINQUENCYSTATUS",
+      "alias": "tlds",
+      "description": "Delinquency status lookup table",
+      "columns": [
+        {
+          "column_name": "ID",
+          "data_type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "column_name": "NAME",
+          "data_type": "VARCHAR(50)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "table_name": "DIMBILLINGACCOUNT",
+      "description": "Lookup table for existing dimension records (used in LKP - DimBillingAccount)",
+      "columns": [
+        {
+          "column_name": "PUBLICID",
+          "data_type": "VARCHAR(64)",
+          "nullable": false,
+          "description": "Business key for lookup"
+        },
+        {
+          "column_name": "BEANVERSION",
+          "data_type": "VARCHAR(20)",
+          "nullable": true,
+          "description": "Used for change detection"
+        }
+      ]
+    }
+  ],
+  "joins": [
+    {
+      "left_table": "BC_ACCOUNT",
+      "left_alias": "dt",
+      "right_table": "BCTL_ACCOUNTTYPE",
+      "right_alias": "at",
+      "join_type": "LEFT",
+      "condition": "at.ID = dt.ACCOUNTTYPE"
+    },
+    {
+      "left_table": "BC_ACCOUNT",
+      "left_alias": "dt",
+      "right_table": "BC_PARENTACCT (via CTE ParentAcct)",
+      "right_alias": "ParentAcct",
+      "join_type": "LEFT",
+      "condition": "ParentAcct.OWNERID = dt.ID",
+      "description": "Joins to ParentAcct CTE which contains parent account information"
+    },
+    {
+      "left_table": "BC_PARENTACCT",
+      "left_alias": "pa",
+      "right_table": "BC_ACCOUNT",
+      "right_alias": "act",
+      "join_type": "INNER",
+      "condition": "act.ID = pa.FOREIGNENTITYID",
+      "description": "Within ParentAcct CTE to get parent account number"
+    },
+    {
+      "left_table": "BC_ACCOUNT",
+      "left_alias": "dt",
+      "right_table": "BCTL_BILLINGLEVEL",
+      "right_alias": "bl",
+      "join_type": "LEFT",
+      "condition": "bl.ID = dt.BILLINGLEVEL"
+    },
+    {
+      "left_table": "BC_ACCOUNT",
+      "left_alias": "dt",
+      "right_table": "BCTL_CUSTOMERSERVICETIER",
+      "right_alias": "cst",
+      "join_type": "LEFT",
+      "condition": "cst.ID = dt.SERVICETIER"
+    },
+    {
+      "left_table": "BC_ACCOUNT",
+      "left_alias": "dt",
+      "right_table": "BC_SECURITYZONE",
+      "right_alias": "sz",
+      "join_type": "LEFT",
+      "condition": "sz.ID = dt.SECURITYZONEID"
+    },
+    {
+      "left_table": "BC_ACCOUNT",
+      "left_alias": "dt",
+      "right_table": "BC_ACCOUNTCONTACT (via CTE InsuredInfo)",
+      "right_alias": "InsuredInfo",
+      "join_type": "LEFT",
+      "condition": "InsuredInfo.ACCOUNTID = dt.ID",
+      "description": "Joins to InsuredInfo CTE which contains insured contact and address information"
+    },
+    {
+      "left_table": "BC_ACCOUNTCONTACT",
+      "left_alias": "ac",
+      "right_table": "BC_ACCOUNTCONTACTROLE",
+      "right_alias": "acr",
+      "join_type": "INNER",
+      "condition": "acr.ACCOUNTCONTACTID = ac.ID",
+      "description": "Within InsuredInfo CTE"
+    },
+    {
+      "left_table": "BC_ACCOUNTCONTACTROLE",
+      "left_alias": "acr",
+      "right_table": "BCTL_ACCOUNTROLE",
+      "right_alias": "tlar",
+      "join_type": "INNER",
+      "condition": "tlar.ID = acr.ROLE",
+      "description": "Within InsuredInfo CTE"
+    },
+    {
+      "left_table": "BC_ACCOUNTCONTACT",
+      "left_alias": "ac",
+      "right_table": "BC_CONTACT",
+      "right_alias": "c",
+      "join_type": "LEFT",
+      "condition": "c.ID = ac.CONTACTID",
+      "description": "Within InsuredInfo CTE"
+    },
+    {
+      "left_table": "BC_CONTACT",
+      "left_alias": "c",
+      "right_table": "BC_ADDRESS",
+      "right_alias": "a",
+      "join_type": "LEFT",
+      "condition": "a.ID = c.PRIMARYADDRESSID",
+      "description": "Within InsuredInfo CTE"
+    },
+    {
+      "left_table": "BC_ADDRESS",
+      "left_alias": "a",
+      "right_table": "BCTL_STATE",
+      "right_alias": "tls",
+      "join_type": "LEFT",
+      "condition": "tls.ID = a.STATE",
+      "description": "Within InsuredInfo CTE"
+    },
+    {
+      "left_table": "BC_ACCOUNT",
+      "left_alias": "dt",
+      "right_table": "BCTL_DELINQUENCYSTATUS",
+      "right_alias": "tlds",
+      "join_type": "LEFT",
+      "condition": "tlds.ID = dt.DELINQUENCYSTATUS"
+    },
+    {
+      "left_table": "BC_ACCOUNT",
+      "left_alias": "dt",
+      "right_table": "BCTL_ACCOUNTSEGMENT",
+      "right_alias": "bas",
+      "join_type": "LEFT",
+      "condition": "bas.ID = dt.SEGMENT"
+    },
+    {
+      "left_table": "SOURCE_DATA",
+      "right_table": "DIMBILLINGACCOUNT",
+      "join_type": "LOOKUP",
+      "condition": "SOURCE.PUBLICID = DIMBILLINGACCOUNT.PUBLICID",
+      "description": "Lookup transformation to find existing records"
+    }
+  ],
+  "transformations": [
+    {
+      "type": "ROW_COUNT",
+      "name": "CNT - Source Count",
+      "description": "Counts all source records from GuideWire",
+      "logic": "Stores count in variable User::SourceCount"
+    },
+    {
+      "type": "DERIVED_COLUMN",
+      "name": "DRV - BatchID & Legacy",
+      "description": "Adds audit and system identifier columns",
+      "columns": [
+        {
+          "column_name": "BATCHID",
+          "expression": "@[User::BatchID]",
+          "data_type": "INT",
+          "description": "Batch identifier from package variable"
+        }
+      ]
+    },
+    {
+      "type": "LOOKUP",
+      "name": "LKP - DimBillingAccount",
+      "description": "Looks up existing records in DimBillingAccount to determine if INSERT or UPDATE is needed",
+      "lookup_table": "DIMBILLINGACCOUNT",
+      "cache_mode": "PARTIAL",
+      "lookup_query": "SELECT PUBLICID, BEANVERSION FROM DIMBILLINGACCOUNT",
+      "join_columns": [
+        {
+          "source_column": "PUBLICID",
+          "lookup_column": "PUBLICID"
+        }
+      ],
+      "return_columns": [
+        {
+          "lookup_column": "BEANVERSION",
+          "output_alias": "EDWBEANVERSION"
+        }
+      ],
+      "no_match_behavior": "REDIRECT_TO_NO_MATCH_OUTPUT",
+      "outputs": [
+        {
+          "output_name": "Lookup Match Output",
+          "description": "Records found in dimension - potential updates"
+        },
+        {
+          "output_name": "Lookup No Match Output",
+          "description": "New records not found in dimension - will be inserted"
+        }
+      ]
+    },
+    {
+      "type": "CONDITIONAL_SPLIT",
+      "name": "CSPL - Check BeanVersion",
+      "description": "Compares BeanVersion between source and dimension to detect changes (SCD Type 1)",
+      "conditions": [
+        {
+          "output_name": "SameBeanVersion",
+          "condition": "BEANVERSION == EDWBEANVERSION",
+          "description": "No changes detected - record unchanged",
+          "evaluation_order": 0
+        },
+        {
+          "output_name": "DifferentBeanVersion",
+          "condition": "DEFAULT",
+          "description": "BeanVersion differs - record needs update",
+          "evaluation_order": 1
+        }
+      ]
+    },
+    {
+      "type": "ROW_COUNT",
+      "name": "CNT - Insert Count",
+      "description": "Counts new records to be inserted",
+      "logic": "Stores count in variable User::InsertCount",
+      "input_source": "Lookup No Match Output"
+    },
+    {
+      "type": "ROW_COUNT",
+      "name": "CNT - Update Count",
+      "description": "Counts existing records to be updated",
+      "logic": "Stores count in variable User::UpdateCount",
+      "input_source": "DifferentBeanVersion output"
+    },
+    {
+      "type": "ROW_COUNT",
+      "name": "CNT - Unchange Count",
+      "description": "Counts records with no changes",
+      "logic": "Stores count in variable User::UnChangeCount",
+      "input_source": "SameBeanVersion output"
+    },
+    {
+      "type": "FILTER",
+      "name": "Source Query Filter",
+      "description": "Incremental load filter based on UpdateTime",
+      "logic": "WHERE (dt.UPDATETIME >= DATEADD(D, @IncrementDays, CAST(GETDATE() AS DATE)) OR ParentAcct.UPDATETIME >= DATEADD(D, @IncrementDays, CAST(GETDATE() AS DATE)) OR sz.UPDATETIME >= DATEADD(D, @IncrementDays, CAST(GETDATE() AS DATE)) OR InsuredInfo.ac_UPDATETIME >= DATEADD(D, @IncrementDays, CAST(GETDATE() AS DATE)) OR InsuredInfo.acr_UPDATETIME >= DATEADD(D, @IncrementDays, CAST(GETDATE() AS DATE)) OR InsuredInfo.c_UPDATETIME >= DATEADD(D, @IncrementDays, CAST(GETDATE() AS DATE)) OR InsuredInfo.a_UPDATETIME >= DATEADD(D, @IncrementDays, CAST(GETDATE() AS DATE)))"
+    },
+    {
+      "type": "FILTER",
+      "name": "InsuredInfo CTE Filter",
+      "description": "Filters for insured role contacts only",
+      "logic": "WHERE tlar.TYPECODE = 'insured'"
+    }
+  ],
+  "target": {
+    "table_name": "DIMBILLINGACCOUNT",
+    "load_type": "UPSERT",
+    "description": "Dimension table for billing account information. Implements SCD Type 1 (overwrite) based on BeanVersion comparison.",
+    "insert_operation": {
+      "component_name": "Load DimBillingAccount",
+      "load_method": "FAST_LOAD",
+      "source": "Lookup No Match Output (new records)",
+      "options": "TABLOCK, CHECK_CONSTRAINTS, ROWS_PER_BATCH = 10000",
+      "commit_size": 10000
+    },
+    "update_operation": {
+      "component_name": "CMD - Update DimBillingAccount",
+      "load_method": "OLE_DB_COMMAND",
+      "source": "DifferentBeanVersion output (changed records)",
+      "update_statement": "UPDATE DIMBILLINGACCOUNT SET DATEUPDATED = GETDATE(), ACCOUNTCLOSEDATE = ?, ACCOUNTCREATIONDATE = ?, ACCOUNTNAME = ?, ACCOUNTNUMBER = ?, ACCOUNTTYPENAME = ?, ADDRESSLINE1 = ?, ADDRESSLINE2 = ?, ADDRESSLINE3 = ?, BATCHID = ?, BEANVERSION = ?, BILLINGLEVELNAME = ?, CITY = ?, DELIQUENCYSTATUSNAME = ?, FIRSTNAME = ?, GWROWNUMBER = ?, ISACTIVE = ?, LASTNAME = ?, PARENTACCOUNTNUMBER = ?, POSTALCODE = ?, SECURITYZONE = ?, SEGMENT = ?, SERVICETIERNAME = ?, STATE = ? WHERE PUBLICID = ? AND LEGACYSOURCESYSTEM = ?"
+    },
+    "columns": [
+      {
+        "column_name": "BILLINGACCOUNTID",
+        "data_type": "INT",
+        "nullable": false,
+        "description": "Surrogate key (auto-generated)"
+      },
+      {
+        "column_name": "PUBLICID",
+        "data_type": "VARCHAR(64)",
+        "nullable": false,
+        "source_column": "PUBLICID",
+        "description": "Business key from source"
+      },
+      {
+        "column_name": "ACCOUNTNUMBER",
+        "data_type": "VARCHAR(256)",
+        "nullable": true,
+        "source_column": "ACCOUNTNUMBER"
+      },
+      {
+        "column_name": "ACCOUNTNAME",
+        "data_type": "VARCHAR(256)",
+        "nullable": true,
+        "source_column": "ACCOUNTNAME"
+      },
+      {
+        "column_name": "ACCOUNTTYPENAME",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "ACCOUNTTYPENAME"
+      },
+      {
+        "column_name": "PARENTACCOUNTNUMBER",
+        "data_type": "BIGINT",
+        "nullable": true,
+        "source_column": "PARENTACCOUNTNUMBER"
+      },
+      {
+        "column_name": "BILLINGLEVELNAME",
+        "data_type": "VARCHAR(100)",
+        "nullable": true,
+        "source_column": "BILLINGLEVELNAME"
+      },
+      {
+        "column_name": "SERVICETIERNAME",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "SERVICETIERNAME"
+      },
+      {
+        "column_name": "SECURITYZONE",
+        "data_type": "VARCHAR(100)",
+        "nullable": true,
+        "source_column": "SECURITYZONE"
+      },
+      {
+        "column_name": "FIRSTNAME",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "FIRSTNAME"
+      },
+      {
+        "column_name": "LASTNAME",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "LASTNAME"
+      },
+      {
+        "column_name": "ADDRESSLINE1",
+        "data_type": "VARCHAR(100)",
+        "nullable": true,
+        "source_column": "ADDRESSLINE1"
+      },
+      {
+        "column_name": "ADDRESSLINE2",
+        "data_type": "VARCHAR(100)",
+        "nullable": true,
+        "source_column": "ADDRESSLINE2"
+      },
+      {
+        "column_name": "ADDRESSLINE3",
+        "data_type": "VARCHAR(100)",
+        "nullable": true,
+        "source_column": "ADDRESSLINE3"
+      },
+      {
+        "column_name": "CITY",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "CITY"
+      },
+      {
+        "column_name": "STATE",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "STATE"
+      },
+      {
+        "column_name": "POSTALCODE",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "POSTALCODE"
+      },
+      {
+        "column_name": "ACCOUNTCLOSEDATE",
+        "data_type": "TIMESTAMP",
+        "nullable": true,
+        "source_column": "ACCOUNTCLOSEDATE"
+      },
+      {
+        "column_name": "ACCOUNTCREATIONDATE",
+        "data_type": "TIMESTAMP",
+        "nullable": true,
+        "source_column": "ACCOUNTCREATIONDATE"
+      },
+      {
+        "column_name": "DELIQUENCYSTATUSNAME",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "DELIQUENCYSTATUSNAME"
+      },
+      {
+        "column_name": "ISACTIVE",
+        "data_type": "BOOLEAN",
+        "nullable": true,
+        "source_column": "ISACTIVE",
+        "description": "Derived from RETIRED field (inverted logic)"
+      },
+      {
+        "column_name": "BATCHID",
+        "data_type": "BIGINT",
+        "nullable": true,
+        "source_column": "BATCHID",
+        "description": "Audit field from package variable"
+      },
+      {
+        "column_name": "GWROWNUMBER",
+        "data_type": "BIGINT",
+        "nullable": true,
+        "source_column": "GWROWNUMBER",
+        "description": "Source system row ID"
+      },
+      {
+        "column_name": "BEANVERSION",
+        "data_type": "VARCHAR(20)",
+        "nullable": true,
+        "source_column": "BEANVERSION",
+        "description": "Composite version field for change detection"
+      },
+      {
+        "column_name": "LEGACYSOURCESYSTEM",
+        "data_type": "VARCHAR(25)",
+        "nullable": true,
+        "source_column": "LEGACYSOURCESYSTEM",
+        "description": "Hard-coded value 'WC'"
+      },
+      {
+        "column_name": "SEGMENT",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "source_column": "SEGMENT"
+      },
+      {
+        "column_name": "DATEADDED",
+        "data_type": "TIMESTAMP",
+        "nullable": true,
+        "description": "Auto-populated on INSERT"
+      },
+      {
+        "column_name": "DATEUPDATED",
+        "data_type": "TIMESTAMP",
+        "nullable": true,
+        "description": "Set to GETDATE() on UPDATE"
+      },
+      {
+        "column_name": "ADDEDBYUSER",
+        "data_type": "VARCHAR(50)",
+        "nullable": true,
+        "description": "Audit field"
+      }
+    ]
+  },
+  "control_flow": [
+    {
+      "step": 1,
+      "task_name": "SQL - Initiate Process",
+      "task_type": "EXECUTE_SQL",
+      "description": "Inserts audit record with 'Started' status",
+      "sql": "INSERT INTO DMPROC.AUDIT (CONTROLID, BATCHID, STATUS, INITIATEDTM) SELECT CONTROLID, ?, 'Started', GETDATE() FROM DMPROC.AUDITREFERENCE WHERE ETLPACKAGE = ?"
+    },
+    {
+      "step": 2,
+      "task_name": "DFT - Load DimBillingAccount",
+      "task_type": "DATA_FLOW",
+      "description": "Main data flow task containing all transformations and loads"
+    },
+    {
+      "step": 3,
+      "task_name": "SQL - Conclude Process Completed",
+      "task_type": "EXECUTE_SQL",
+      "description": "Updates audit record with 'Completed' status and row counts (on success)",
+      "sql": "UPDATE DMPROC.AUDIT SET STATUS = 'Completed', COMPLETEDIND = 1, CONCLUDEDTM = GETDATE(), SOURCECOUNT = ?, INSERTCOUNT = ?, UPDATECOUNT = ?, UNCHANGECOUNT = ? WHERE CONTROLID = (SELECT CONTROLID FROM DMPROC.AUDITREFERENCE WHERE ETLPACKAGE = ?) AND BATCHID = ?",
+      "precedence_constraint": "SUCCESS"
+    },
+    {
+      "step": 3,
+      "task_name": "SQL - Conclude Process Failed",
+      "task_type": "EXECUTE_SQL",
+      "description": "Updates audit record with 'Failed' status (on failure)",
+      "sql": "UPDATE DMPROC.AUDIT SET STATUS = 'Failed', COMPLETEDIND = 0, CONCLUDEDTM = GETDATE(), SOURCECOUNT = ?, INSERTCOUNT = ?, UPDATECOUNT = ?, UNCHANGECOUNT = ? WHERE CONTROLID = (SELECT CONTROLID FROM DMPROC.AUDITREFERENCE WHERE ETLPACKAGE = ?) AND BATCHID = ?",
+      "precedence_constraint": "FAILURE"
+    }
+  ],
+  "error_handling": [
+    {
+      "event": "OnError",
+      "handler": "SQL - Error Log",
+      "description": "Logs errors to DMPROC.ERRORLOG table",
+      "sql": "INSERT INTO DMPROC.ERRORLOG (CONTROLID, BATCHID, ERROR_TYPE_CD, ERROR_NUMBER, ERROR_MESSAGE) SELECT CONTROLID, ?, 'E', ?, ? FROM DMPROC.AUDITREFERENCE WHERE ETLPACKAGE = ?"
+    }
+  ],
+  "data_flow_summary": {
+    "source_system": "GuideWire BillingCenter",
+    "target_system": "Enterprise Data Warehouse",
+    "load_pattern": "Incremental (based on UpdateTime)",
+    "scd_type": "Type 1 (Overwrite)",
+    "change_detection_method": "BeanVersion comparison",
+    "primary_business_key": "PublicID",
+    "total_source_tables": 15,
+    "total_transformations": 9,
+    "estimated_complexity": "HIGH"
+  }
+}
