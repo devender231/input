@@ -1,0 +1,79 @@
+# Source YAML for BC_ACCOUNT
+version: 1.0
+
+sources:
+  - name: BC_ACCOUNT
+    source_type: table
+    location:
+      database: SRC
+      schema: SRC
+      table: BC_ACCOUNT
+    
+    columns:
+      - name: ACCOUNTNUMBER
+        data_type: INTEGER
+        nullable: true
+        
+      - name: ACCOUNTNAME
+        data_type: STRING
+        nullable: true
+        
+      - name: ACCOUNTTYPE
+        data_type: INTEGER
+        nullable: true
+        
+      - name: BILLINGLEVEL
+        data_type: INTEGER
+        nullable: true
+        
+      - name: SERVICETIER
+        data_type: INTEGER
+        nullable: true
+        
+      - name: SECURITYZONEID
+        data_type: INTEGER
+        nullable: true
+        
+      - name: SEGMENT
+        data_type: INTEGER
+        nullable: true
+        
+      - name: CLOSEDATE
+        data_type: DATETIME
+        nullable: true
+        
+      - name: CREATETIME
+        data_type: DATETIME
+        nullable: true
+        
+      - name: DELINQUENCYSTATUS
+        data_type: INTEGER
+        nullable: true
+        
+      - name: FIRSTTWICEPERMTHINVOICEDOM
+        data_type: INTEGER
+        nullable: true
+        
+      - name: SECONDTWICEPERMTHINVOICEDOM
+        data_type: INTEGER
+        nullable: true
+        
+      - name: PUBLICID
+        data_type: STRING
+        nullable: true
+        
+      - name: ID
+        data_type: INTEGER
+        nullable: true
+        
+      - name: BEANVERSION
+        data_type: STRING
+        nullable: true
+        
+      - name: RETIRED
+        data_type: INTEGER
+        nullable: true
+        
+      - name: UPDATETIME
+        data_type: DATETIME
+        nullable: true
