@@ -1,0 +1,19 @@
+# Source YAML for BCTL_ACCOUNTROLE
+version: 1.0
+
+sources:
+  - name: BCTL_ACCOUNTROLE
+    source_type: table
+    location:
+      database: SRC
+      schema: SRC
+      table: BCTL_ACCOUNTROLE
+    
+    columns:
+      - name: ID
+        data_type: INTEGER
+        nullable: true
+        
+      - name: TYPECODE
+        data_type: STRING
+        nullable: true
