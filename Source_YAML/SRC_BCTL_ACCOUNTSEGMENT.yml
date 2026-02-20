@@ -1,0 +1,19 @@
+# Source YAML for BCTL_ACCOUNTSEGMENT
+version: 1.0
+
+sources:
+  - name: BCTL_ACCOUNTSEGMENT
+    source_type: table
+    location:
+      database: SRC
+      schema: SRC
+      table: BCTL_ACCOUNTSEGMENT
+    
+    columns:
+      - name: ID
+        data_type: INTEGER
+        nullable: true
+        
+      - name: NAME
+        data_type: STRING
+        nullable: true
