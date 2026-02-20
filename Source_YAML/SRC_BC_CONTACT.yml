@@ -1,0 +1,35 @@
+# Source YAML for BC_CONTACT
+version: 1.0
+
+sources:
+  - name: BC_CONTACT
+    source_type: table
+    location:
+      database: SRC
+      schema: SRC
+      table: BC_CONTACT
+    
+    columns:
+      - name: ID
+        data_type: INTEGER
+        nullable: true
+        
+      - name: FIRSTNAME
+        data_type: STRING
+        nullable: true
+        
+      - name: LASTNAME
+        data_type: STRING
+        nullable: true
+        
+      - name: PRIMARYADDRESSID
+        data_type: INTEGER
+        nullable: true
+        
+      - name: BEANVERSION
+        data_type: STRING
+        nullable: true
+        
+      - name: UPDATETIME
+        data_type: DATETIME
+        nullable: true
