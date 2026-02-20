@@ -1,0 +1,19 @@
+# Source YAML for BCTL_DELINQUENCYSTATUS
+version: 1.0
+
+sources:
+  - name: BCTL_DELINQUENCYSTATUS
+    source_type: table
+    location:
+      database: SRC
+      schema: SRC
+      table: BCTL_DELINQUENCYSTATUS
+    
+    columns:
+      - name: ID
+        data_type: INTEGER
+        nullable: true
+        
+      - name: NAME
+        data_type: STRING
+        nullable: true
