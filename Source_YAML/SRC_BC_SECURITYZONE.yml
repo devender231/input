@@ -1,0 +1,27 @@
+# Source YAML for BC_SECURITYZONE
+version: 1.0
+
+sources:
+  - name: BC_SECURITYZONE
+    source_type: table
+    location:
+      database: SRC
+      schema: SRC
+      table: BC_SECURITYZONE
+    
+    columns:
+      - name: ID
+        data_type: INTEGER
+        nullable: true
+        
+      - name: NAME
+        data_type: STRING
+        nullable: true
+        
+      - name: BEANVERSION
+        data_type: STRING
+        nullable: true
+        
+      - name: UPDATETIME
+        data_type: DATETIME
+        nullable: true
