@@ -1,0 +1,19 @@
+# Source YAML for DIMBILLINGACCOUNT
+version: 1.0
+
+sources:
+  - name: DIMBILLINGACCOUNT
+    source_type: table
+    location:
+      database: SRC
+      schema: SRC
+      table: DIMBILLINGACCOUNT
+    
+    columns:
+      - name: PUBLICID
+        data_type: STRING
+        nullable: true
+        
+      - name: BEANVERSION
+        data_type: STRING
+        nullable: true
