@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:ExecutableType="SSIS.Package"
+  DTS:PackageType="5"
+  DTS:VersionMajor="1"
+  DTS:VersionMinor="0"
+  DTS:CreationDate="2026-02-24T15:30:00"
+  DTS:PackageFormatVersion="8"
+  DTS:Name="Customer_Order_Flow">
+
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:Name="Snowflake_Connection"
+      DTS:CreationName="OLEDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Provider=MSOLEDBSQL;Data Source=YOUR_SNOWFLAKE_SERVER;Initial Catalog=PC_COALESCE_DB;Integrated Security=SSPI;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Executables>
+
+    <!-- Data Flow Task -->
+    <DTS:Executable
+      DTS:ExecutableType="SSIS.Pipeline"
+      DTS:Name="DFT_Load_Customer_Order_Summary">
+
+      <DTS:ObjectData>
+        <pipeline>
+
+          <!-- OLE DB Source with Join + Transform SQL -->
+          <component name="SRC_Customer_Order_Full"
+                     componentClassID="OLEDBSource"
+                     description="Source with joins and transformations">
+            <properties>
+              <property name="AccessMode">2</property>
+              <property name="SqlCommand">
+                SELECT
+                    c.customer_id,
+                    c.first_name || ' ' || c.last_name AS full_name,
+                    c.email,
+                    o.order_id,
+                    o.order_date,
+                    YEAR(o.order_date) AS order_year,
+                    oi.product_name,
+                    oi.quantity,
+                    oi.price,
+                    oi.quantity * oi.price AS item_total,
+                    o.total_amount,
+                    p.amount_paid,
+                    CASE
+                        WHEN p.amount_paid >= o.total_amount THEN 'PAID'
+                        WHEN p.amount_paid IS NULL THEN 'NOT PAID'
+                        ELSE 'PARTIAL'
+                    END AS payment_status
+                FROM PC_COALESCE_DB.RAW.CUSTOMERS c
+                JOIN PC_COALESCE_DB.RAW.ORDERS o
+                    ON c.customer_id = o.customer_id
+                LEFT JOIN PC_COALESCE_DB.RAW.ORDER_ITEMS oi
+                    ON o.order_id = oi.order_id
+                LEFT JOIN PC_COALESCE_DB.RAW.PAYMENTS p
+                    ON o.order_id = p.order_id
+              </property>
+            </properties>
+          </component>
+
+          <!-- OLE DB Destination -->
+          <component name="DEST_Customer_Order_Summary"
+                     componentClassID="OLEDBDestination"
+                     description="Load into TARGET schema">
+            <properties>
+              <property name="OpenRowset">
+                PC_COALESCE_DB.TARGET.CUSTOMER_ORDER_SUMMARY
+              </property>
+              <property name="AccessMode">3</property>
+            </properties>
+          </component>
+
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+</DTS:Executable>
