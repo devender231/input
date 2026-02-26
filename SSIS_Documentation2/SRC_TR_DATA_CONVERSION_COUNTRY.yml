@@ -1,0 +1,107 @@
+fileVersion: 1
+
+id: SRC_TR_DATA_CONVERSION_COUNTRY
+
+name: SRC_TR_DATA_CONVERSION_COUNTRY
+
+operation:
+  config:
+    insertStrategy: INSERT
+    postSQL: ""
+    preSQL: ""
+    testsEnabled: true
+    truncateBefore: true
+  database: ""
+  deployEnabled: true
+  description: "Data Conversion transformation - converts country_name from VARCHAR(255) to NVARCHAR(400)"
+  isMultisource: false
+  locationName: SRC
+  materializationType: table
+  metadata:
+    appliedNodeTests: []
+    columns:
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 1
+          stepCounter: 2
+        config: {}
+        dataType: INTEGER
+        description: "Territory ID - passed through from join"
+        name: TerritoryID
+        nullable: false
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 1
+                stepCounter: 1
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 2
+          stepCounter: 2
+        config: {}
+        dataType: NVARCHAR(50)
+        description: "Territory Name - passed through from join"
+        name: Name
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 2
+                stepCounter: 1
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 3
+          stepCounter: 2
+        config: {}
+        dataType: NVARCHAR(400)
+        description: "Country - converted from VARCHAR(255) to NVARCHAR(400)"
+        name: country
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 3
+                stepCounter: 1
+            transform: "CAST(country_name AS NVARCHAR(400))"
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 4
+          stepCounter: 2
+        config: {}
+        dataType: NVARCHAR(50)
+        description: "Territory Group - passed through from join"
+        name: Group
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 4
+                stepCounter: 1
+            transform: ""
+    cteString: ""
+    enabledColumnTestIDs: []
+    sourceMapping:
+      - aliases:
+          SRC_JOIN_TERRITORY_COUNTRY: jn
+        customSQL:
+          customSQL: |
+            SELECT 
+              jn.TerritoryID,
+              jn.Name,
+              CAST(jn.country_name AS NVARCHAR(400)) AS country,
+              jn.[Group]
+            FROM {{ ref('SRC', 'SRC_JOIN_TERRITORY_COUNTRY') }} jn
+        dependencies:
+          - locationName: SRC
+            nodeName: SRC_JOIN_TERRITORY_COUNTRY
+        join:
+          joinCondition: |
+            FROM {{ ref('SRC', 'SRC_JOIN_TERRITORY_COUNTRY') }} jn
+        name: SRC_TR_DATA_CONVERSION_COUNTRY
+        noLinkRefs: []
+  name: SRC_TR_DATA_CONVERSION_COUNTRY
+  overrideSQL: false
+  schema: ""
+  sqlType: Stage
+  type: sql
+  version: 1
+
+type: Node
